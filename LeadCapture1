@@ -1,0 +1,45 @@
+javascript
+/**
+ * MyPrivacyTOOL — Cloudflare Worker: Webhook Receiver
+ * Receives inbound messages from all platforms and routes to First Hexagon engine
+ * 
+ * Platforms handled:
+ *   - Telegram (live)
+ *   - Email/Gmail (live via GCP Cloud Function)
+ *   - Facebook Messenger (stub — needs Meta App credentials)
+ *   - Instagram DM (stub — needs Meta App credentials)
+ *   - WhatsApp (stub — needs WhatsApp Business credentials)
+ *   - SMS/Twilio (stub — needs Twilio credentials)
+ */
+
+import { generateFirstHexagon } from './first-hexagon.js';
+import { saveConversationState, getConversationState } from './firestore-client.js';
+import { createHubSpotContact } from './hubspot-client.js';
+
+const PLATFORM_TOKENS = {
+  telegram: () => TELEGRAM_BOT_TOKEN,
+  meta_verify: () => META_VERIFY_TOKEN,
+  twilio: () => TWILIO_AUTH_TOKEN,
+};
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    if (path === '/health') {
+      return new Response(JSON.stringify({ status: 'ok', ts: Date.now() }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (path === '/webhook/telegram') return handleTelegram(request, env);
+    if (path === '/webhook/messenger') return handleMessenger(request, env);
+    if (path === '/webhook/instagram') return handleInstagram(request, env);
+    if (path === '/webhook/whatsapp') return handleWhatsApp(request, env);
+    if (path === '/webhook/sms') return handleSMS(request, env);
+    if (path === '/webhook/email') return handleEmail(request, env);
+
+    return new Response('Not Found', { status: 404 });
+  }
+};
