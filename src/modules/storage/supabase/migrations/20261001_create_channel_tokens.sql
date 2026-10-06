@@ -18,4 +18,6 @@ create table if not exists public.channel_tokens (
 -- RLS on with no policies: only the service-role key (server side) can read/write.
 alter table public.channel_tokens enable row level security;
 
+comment on table public.channel_tokens is 'MPC-115. AES-256-GCM ciphertext OAuth tokens for channel integrations. RLS on, no policies: service_role only.';
+
 -- Rollback: DROP TABLE IF EXISTS public.channel_tokens;

@@ -12,15 +12,15 @@
   "dependencies": {
     "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.117.2",
-    "next": "^14.2.35",
+    "next": "^16.3.8",
     "next-auth": "^5.0.0-beta.32",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.3"
   }
