@@ -1,0 +1,48 @@
+name: Quackr test numbers
+
+# Manual only. Uses the QUACKR_API_KEY repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'discover (tools + balance) or call (run one tool)'
+        type: choice
+        options: [discover, call]
+        default: discover
+      tool:
+        description: 'Tool name for action=call (e.g. get-inventory, check-sms)'
+        required: false
+      args:
+        description: 'JSON arguments for the tool'
+        required: false
+        default: '{}'
+      allow_purchase:
+        description: 'Allow purchase-number (spends real money)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  quackr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run Quackr client
+        env:
+          QUACKR_API_KEY: ${{ secrets.QUACKR_API_KEY }}
+          ALLOW_PURCHASE: ${{ inputs.allow_purchase }}
+          ACTION: ${{ inputs.action }}
+          TOOL: ${{ inputs.tool }}
+          ARGS: ${{ inputs.args }}
+        run: |
+          if [ "$ACTION" = "call" ]; then
+            node scripts/quackr.mjs call "$TOOL" "$ARGS"
+          else
+            node scripts/quackr.mjs discover
+          fi
