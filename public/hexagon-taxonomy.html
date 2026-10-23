@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MPT Hexagon Taxonomy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root { color-scheme: light; }
+body { margin: 0; }
+/* Layout: heading + controls, a honeycomb of 12 faint hexes behind a curtain (4 rows x 3) that a footprint trail walks across, detail panel beside it. Lit = on your path. */
+:root {
+  --bg: #f6f8f7; --surface: #ffffff; --fg: #15261e; --muted: #5a6f64; --line: #d5dfd9;
+  --lit: #2f7d4f; --lit-t: #e0f0e6; --lit-d: #1f5a38;
+  --f-fill: #fcfdfc; --f-stroke: #ebf0ed; --f-text: #d6dfd9;
+  --display: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1a14; --surface: #15261d; --fg: #e3efe8; --muted: #8fa89a; --line: #2a4235;
+  --lit: #5bc588; --lit-t: #17382a; --lit-d: #8fe0b0;
+  --f-fill: #101d16; --f-stroke: #1a2e23; --f-text: #2a4538; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1a14; --surface: #15261d; --fg: #e3efe8; --muted: #8fa89a; --line: #2a4235;
+  --lit: #5bc588; --lit-t: #17382a; --lit-d: #8fe0b0;
+  --f-fill: #101d16; --f-stroke: #1a2e23; --f-text: #2a4538; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-block: 40px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 28px; }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 6vw, 52px)/1.05 var(--display); margin: 8px 0 12px; text-wrap: balance; }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.bar button { font: 600 14px var(--display); border-radius: 4px; padding: 10px 18px; cursor: pointer; border: 1.5px solid var(--fg); background: var(--fg); color: var(--bg); }
+.bar button.ghost { background: transparent; color: var(--fg); }
+.bar button:focus-visible, .hex:focus-visible { outline: 3px solid var(--lit); outline-offset: 3px; }
+.summary { font: 500 13px var(--mono); color: var(--muted); }
+.main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+svg { width: 100%; height: auto; display: block; overflow: visible; }
+.hex { cursor: pointer; outline: none; }
+.hex polygon { stroke-width: 2; fill: var(--f-fill); stroke: var(--f-stroke); transition: fill .4s, stroke .4s; }
+.hex .ic { fill: none; stroke: var(--f-text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke .4s; }
+.hex .lab { font: 600 13px var(--display); fill: var(--f-text); transition: fill .4s; }
+.hex .badge { opacity: 0; transition: opacity .3s; }
+.hex .badge circle { fill: var(--lit); }
+.hex .badge text { font: 600 11px var(--mono); fill: var(--bg); }
+.hex:not(.lit):hover polygon { stroke: var(--f-text); }
+.hex.lit polygon { fill: var(--lit-t); stroke: var(--lit); stroke-width: 3; }
+.hex.lit .ic { stroke: var(--lit-d); }
+.hex.lit .lab { fill: var(--fg); }
+.hex.lit .badge { opacity: 1; }
+.hex.target polygon { stroke: var(--lit); stroke-dasharray: 6 5; }
+.hex.lit.sel polygon { stroke-width: 4; }
+.stage { overflow: hidden; border-radius: 8px; border: 1px solid transparent; transition: border-color .3s; }
+.stage.zoomed { border-color: var(--line); }
+.print { fill: var(--lit); }
+.trail { opacity: .45; }
+.me { fill: var(--lit-d); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 24px; display: grid; gap: 16px; }
+.side { display: grid; gap: 16px; min-width: 0; }
+#zoomsvg { background: var(--bg); }
+.panel .head { display: flex; align-items: center; gap: 12px; }
+.panel .bdg { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--lit-t); border: 2px solid var(--lit); }
+.panel .bdg svg { width: 24px; height: 24px; }
+.panel .bdg .ic { fill: none; stroke: var(--lit-d); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.panel .num { font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.panel h2 { font: 700 26px/1.15 var(--display); margin: 0; text-wrap: balance; }
+.panel p { margin: 0; }
+.panel h3 { font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.pill { display: inline-block; font: 500 12px var(--mono); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; }
+.path { font-size: 14px; color: var(--muted); margin-top: 6px !important; }
+.status { font: 500 12px var(--mono); color: var(--muted); }
+.hint { color: var(--muted); font-size: 14px; margin: 12px 0 0; }
+.note { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">MyPrivacyTool · Exposure map</div>
+    <h1>Hexagon Taxonomy</h1>
+    <p class="lede">Twelve exposure vectors hide behind a curtain. You walk in from the bottom right and the curtain opens around your footprints. Only the hexagons you step on light up, in the order you reach them. The rest only peek through.</p>
+  </header>
+
+  <div class="bar">
+    <button type="button" id="replay">Replay example walk</button>
+    <button type="button" id="clear" class="ghost">Clear path</button>
+    <span class="summary" id="summary" aria-live="polite"></span>
+  </div>
+
+  <div class="main">
+    <div>
+      <div class="stage" id="stage"><svg id="grid" viewBox="0 0 450 440" role="group" aria-label="Twelve privacy exposure categories"></svg></div>
+      <p class="hint">Click any hexagon to walk there yourself. The dashed frame is what the close-up follows.</p>
+    </div>
+    <div class="side">
+      <div class="stage zoomed" id="zstage"><svg id="zoomsvg" viewBox="0 0 160 104" aria-hidden="true"><use href="#scene"/></svg></div>
+      <aside class="panel" id="panel" aria-live="polite"></aside>
+    </div>
+  </div>
+
+  <p class="note">The example walk is sample data and does not describe a real person. Removal paths are summaries, not legal advice.</p>
+</div>
+
+<script>
+var ICONS = {
+  records: ["M6 3h8l4 4v14H6z", "M14 3v4h4", "M9 12h6", "M9 16h6"],
+  brokers: ["M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3z", "M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6", "M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"],
+  resellers: ["M12 7v4", "M12 11l-6 5", "M12 11l6 5", "C12,5,2", "C5,18,2", "C19,18,2"],
+  social: ["M4 5h16v11H9l-5 4z", "M8 9h8", "M8 12h5"],
+  email: ["M3 6h18v12H3z", "M3 7l9 7 9-7"],
+  phone: ["M8 3h8v18H8z", "M11 18h2"],
+  people: ["C10,10,6", "M14.5 14.5L20 20"],
+  background: ["M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "M8.5 12l2.5 2.5 4.5-5"],
+  optout: ["C12,12,8", "M6.3 6.3l11.4 11.4"],
+  marketing: ["M4 20V11", "M10 20V4", "M16 20v-9", "M21 20H3"],
+  location: ["M12 21s-6-6-6-11a6 6 0 0112 0c0 5-6 11-6 11z", "C12,10,2"],
+  finance: ["M3 6h18v12H3z", "M3 10h18", "M6 15h4"]
+};
+var LEVEL = {
+  r: { g: "●", t: "Removable" },
+  p: { g: "◐", t: "Partly removable" },
+  m: { g: "○", t: "Monitor only" }
+};
+var CATS = [
+  { name: "Public Records", lines: ["Public", "Records"], ic: "records", lv: "p",
+    what: "Your birth certificate, marriage license, property deeds and court filings are public by law, and anyone can request them from the county.",
+    who: "County clerks, court systems",
+    why: "Scammers use these records to apply for credit in your name.",
+    todo: "You can't make most of them private, but you can petition to seal some records, monitor the rest, and freeze your credit.",
+    path: "County-by-county OPRA requests + sealed record petitions" },
+  { name: "Data Brokers", lines: ["Data", "Brokers"], ic: "brokers", lv: "r",
+    what: "Your name, email, phone and address are collected and sold to 100+ companies.",
+    who: "Experian, Spokeo, Whitepages, Intelius, PeopleFinder",
+    why: "Anyone can buy a profile of you for a few dollars, which fuels spam, scams and stalking.",
+    todo: "Send a removal request to each broker, or use a service such as DeleteMe to do it for you.",
+    path: "Individual broker removal requests (DeleteMe does this)" },
+  { name: "Reseller Networks", lines: ["Reseller", "Networks"], ic: "resellers", lv: "r",
+    what: "Data brokers sell your profile on to other data brokers, so one record spreads into many.",
+    who: "Secondary and tertiary brokers",
+    why: "Removing yourself from one site doesn't help if the next broker down the chain still holds a copy.",
+    todo: "Remove yourself from the primary broker first so the cascade stops feeding the others.",
+    path: "Target the primary; cascade stops" },
+  { name: "Social Media Fragments", lines: ["Social Media", "Fragments"], ic: "social", lv: "r",
+    what: "Old posts from Twitter, Instagram and LinkedIn stay archived and indexed long after you forgot them.",
+    who: "Google cache, Wayback Machine, social platforms",
+    why: "Old posts can be pulled into background research, harassment or social engineering.",
+    todo: "Delete posts on the platform, then ask search engines and archives to drop the cached copies.",
+    path: "Platform removal + search indexation requests" },
+  { name: "Email Breach History", lines: ["Email Breach", "History"], ic: "email", lv: "m",
+    what: "Your email address appears in leaked databases and paste sites, such as those tracked by haveibeenpwned.",
+    who: "Historical breaches (Equifax, Yahoo, LinkedIn 2012)",
+    why: "Attackers reuse leaked emails and passwords to take over accounts and send targeted phishing.",
+    todo: "You can't remove old breach data, so monitor it, change reused passwords and turn on two-factor sign-in.",
+    path: "Monitor only (cannot remove historical breach data)" },
+  { name: "Phone Breach History", lines: ["Phone Breach", "History"], ic: "phone", lv: "m",
+    what: "Your phone number shows up in breach databases from telecom leaks and VoIP breaches.",
+    who: "Telecom leaks, VoIP breaches",
+    why: "A leaked number enables SIM-swap attempts, smishing and constant spam calls.",
+    todo: "You can't remove historical leaks, so monitor your number and add a PIN or port-out lock with your carrier.",
+    path: "Monitor only (historical)" },
+  { name: "People Search Sites", lines: ["People Search", "Sites"], ic: "people", lv: "r",
+    what: "Dedicated people-finder sites collect your address, relatives and history into one searchable page.",
+    who: "TruthFinder, BeenVerified, MyLife, PeopleLooker",
+    why: "Strangers can find where you live and who you're related to in seconds.",
+    todo: "File a removal request on each site, and escalate with a cease-and-desist letter if they ignore it.",
+    path: "Individual site removal + cease-and-desist letters" },
+  { name: "Background Check Vendors", lines: ["Background", "Check Vendors"], ic: "background", lv: "p",
+    what: "Vendors compile criminal records, evictions and bankruptcies from PACER and court data and sell them to employers and landlords.",
+    who: "LexisNexis, Sterling, HireRight, Checkr",
+    why: "An old or wrong record can cost you a job or a home.",
+    todo: "Seek expungement or sealing where you qualify, then ask each vendor to remove or correct the entry.",
+    path: "Expungement/sealing (legal remedy) + vendor removal" },
+  { name: "Opt-Out Lists", lines: ["Opt-Out", "Lists"], ic: "optout", lv: "r",
+    what: "You are on do-not-call and do-not-email lists but still get contacted, often by sellers who bought your data before the lists existed or never updated them.",
+    who: "Purchased before lists existed, or list not updated",
+    why: "Unwanted contact continues, and some of it is scam traffic.",
+    todo: "Re-register with the FTC Do Not Call list and your state attorney general's list, and report violators.",
+    path: "Update FTC DNC, state attorney general lists" },
+  { name: "Marketing Databases", lines: ["Marketing", "Databases"], ic: "marketing", lv: "r",
+    what: "B2B data brokers hold your job title, employer and work contact details alongside demographic data.",
+    who: "ZoomInfo, Apollo, Clearbit, Hunter.io",
+    why: "Your work email and role feed cold outreach and make you an easy target for impersonation.",
+    todo: "Submit a removal request to each B2B database and unsubscribe from the lists you appear on.",
+    path: "B2B removal requests + unsubscribe from lists" },
+  { name: "Location History", lines: ["Location", "History"], ic: "location", lv: "r",
+    what: "GPS trails, app permissions and mobile ad tracking record where you go and when.",
+    who: "Google, Apple, Meta, location brokers",
+    why: "Movement patterns reveal your home, workplace, routines and who you visit.",
+    todo: "Revoke location permissions from apps you don't need and audit your Google and Apple account settings.",
+    path: "App permission revoke + Google/Apple account audit" },
+  { name: "Financial Exposure", lines: ["Financial", "Exposure"], ic: "finance", lv: "p",
+    what: "Credit file inquiries, loan applications and bankruptcies are held under the FCRA.",
+    who: "Credit bureaus, lenders, collection agencies",
+    why: "Identity thieves can open accounts in your name, and errors in your file can raise your borrowing costs.",
+    todo: "Freeze or lock your credit at all three bureaus and dispute any wrong entries.",
+    path: "Credit freeze/lock + credit bureau disputes" }
+];
+// Example walk: Alice enters at the bottom right and climbs up; each step is a neighbour of the last
+var SAMPLE = [11, 8, 5, 2, 1, 0];
+
+var NS = "http://www.w3.org/2000/svg";
+var R = 66, W = Math.sqrt(3) * R, ROWH = 1.5 * R, PAD = 8;
+var SPEED = 150, STEP = 17;
+var grid = document.getElementById("grid");
+var panel = document.getElementById("panel");
+var summary = document.getElementById("summary");
+var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+var nodes = [], pos = [], visited = [], queue = [], busy = false, gen = 0;
+var foot = null, heading = 0, current = 0, side = 1;
+var OFF = { x: 24, y: 34 };   // where the foot rests inside a hexagon (lower right)
+var ZOOM = 2.6;
+
+function el(tag, attrs, parent) {
+  var e = document.createElementNS(NS, tag);
+  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function circ(cx, cy, r) {
+  return "M" + (cx - r) + " " + cy + "a" + r + " " + r + " 0 1 0 " + 2 * r + " 0a" + r + " " + r + " 0 1 0 " + (-2 * r) + " 0";
+}
+function drawIcon(parent, key) {
+  ICONS[key].forEach(function (d) {
+    if (d.charAt(0) === "C") { var p = d.slice(1).split(",").map(Number); d = circ(p[0], p[1], p[2]); }
+    el("path", { "class": "ic", d: d }, parent);
+  });
+}
+function hexPoints() {
+  var p = [];
+  for (var i = 0; i < 6; i++) {
+    var a = Math.PI / 180 * (60 * i - 30);
+    p.push((R - 2) * Math.cos(a) + "," + (R - 2) * Math.sin(a));
+  }
+  return p.join(" ");
+}
+
+// One footprint, toes pointing up, centred on its own origin
+var defs = el("defs", {}, grid);
+var fp = el("g", { id: "fp" }, defs);
+el("ellipse", { cx: 0, cy: -1, rx: 3.2, ry: 5.4 }, fp);
+el("ellipse", { cx: 0.3, cy: 6.6, rx: 2.4, ry: 3 }, fp);
+[[-3.4, -8], [-1.5, -9.8], [0.7, -10.4], [2.7, -9.5], [4, -7.4]].forEach(function (t) {
+  el("circle", { cx: t[0], cy: t[1], r: 1.15 }, fp);
+});
+
+// Everything lives in #scene so the close-up window can show the same scene with its own camera
+var scene = el("g", { id: "scene" }, grid);
+var hexLayer = el("g", {}, scene);
+var curtainLayer = el("g", { "pointer-events": "none" }, scene);
+var holes = [], holeFoot = null;
+var trailLayer = el("g", { "pointer-events": "none" }, scene);
+var meLayer = el("g", { "pointer-events": "none" }, scene);
+
+CATS.forEach(function (c, i) {
+  var row = Math.floor(i / 3), col = i % 3;
+  var cx = PAD + W / 2 + col * W + (row % 2 ? W / 2 : 0);
+  var cy = PAD + R + row * ROWH;
+  pos.push({ x: cx, y: cy, fx: cx + OFF.x, fy: cy + OFF.y });
+  var g = el("g", { "class": "hex", transform: "translate(" + cx + "," + cy + ")", tabindex: 0, role: "button",
+    "aria-label": (i + 1) + ". " + c.name }, hexLayer);
+  el("polygon", { points: hexPoints() }, g);
+  var ig = el("g", { transform: "translate(-12,-42)" }, g);
+  drawIcon(ig, c.ic);
+  c.lines.forEach(function (ln, j) {
+    var t = el("text", { "class": "lab", "text-anchor": "middle", y: 12 + j * 16 }, g);
+    t.textContent = ln;
+  });
+  var b = el("g", { "class": "badge", transform: "translate(40,-38)" }, g);
+  el("circle", { r: 10 }, b);
+  var bt = el("text", { "text-anchor": "middle", y: 4 }, b);
+  g.addEventListener("click", function () { walk(i); });
+  g.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); walk(i); }
+  });
+  nodes.push({ g: g, badge: bt });
+});
+
+var rows = Math.ceil(CATS.length / 3);
+var FW = PAD * 2 + W * 3.5, FH = PAD * 2 + 2 * R + (rows - 1) * ROWH;
+grid.setAttribute("viewBox", "0 0 " + FW + " " + FH);
+var zoomSvg = document.getElementById("zoomsvg"), lastVB = "";
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+// The close-up camera follows the foot, ZOOM times closer than the map
+function camTarget() {
+  var w = FW / ZOOM, h = w * 0.65;
+  var c = foot ? { x: foot.x - OFF.x, y: foot.y - OFF.y } : pos[current];
+  return { x: clamp(c.x - w / 2, -60, FW - w + 60), y: clamp(c.y - h / 2, -60, FH - h + 60), w: w, h: h };
+}
+var cam = camTarget();
+// Dashed frame on the full map showing what the close-up sees
+var frame = el("rect", { rx: 6, fill: "none", "stroke-width": 2, "stroke-dasharray": "5 4", "pointer-events": "none" }, grid);
+frame.style.stroke = "var(--muted)";
+function camTick() {
+  var t = camTarget(), k = reduce ? 1 : 0.12;
+  cam.x += (t.x - cam.x) * k; cam.y += (t.y - cam.y) * k;
+  cam.w += (t.w - cam.w) * k; cam.h += (t.h - cam.h) * k;
+  var vb = cam.x.toFixed(2) + " " + cam.y.toFixed(2) + " " + cam.w.toFixed(2) + " " + cam.h.toFixed(2);
+  if (vb !== lastVB) {
+    zoomSvg.setAttribute("viewBox", vb);
+    frame.setAttribute("x", cam.x); frame.setAttribute("y", cam.y);
+    frame.setAttribute("width", cam.w); frame.setAttribute("height", cam.h);
+    lastVB = vb;
+  }
+  requestAnimationFrame(camTick);
+}
+camTick();
+
+// The curtain: a soft white drape over every hexagon, with holes that open where Alice has been
+function tweenR(c, to, ms) {
+  var from = +c.getAttribute("r");
+  if (reduce || !ms) { c._id = (c._id || 0) + 1; c.setAttribute("r", to); return; }
+  var id = (c._id = (c._id || 0) + 1), t0 = performance.now();
+  (function f() {
+    if (c._id !== id) return;
+    var k = Math.min(1, (performance.now() - t0) / ms);
+    c.setAttribute("r", from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(f);
+  })();
+}
+(function buildCurtain() {
+  var X = -120, Y = -120, CW = FW + 240, CH = FH + 240;
+  var m = el("mask", { id: "curtainMask", maskUnits: "userSpaceOnUse", x: X, y: Y, width: CW, height: CH }, defs);
+  el("rect", { x: X, y: Y, width: CW, height: CH, fill: "#fff" }, m);
+  var rg = el("radialGradient", { id: "hg" }, defs);
+  [["0", "#000"], ["0.72", "#000"], ["1", "#fff"]].forEach(function (s) {
+    el("stop", { offset: s[0], "stop-color": s[1] }, rg);
+  });
+  pos.forEach(function (p) { holes.push(el("circle", { cx: p.x, cy: p.y, r: 0, fill: "url(#hg)" }, m)); });
+  holeFoot = el("circle", { cx: -999, cy: -999, r: 0, fill: "url(#hg)" }, m);
+  var lg = el("linearGradient", { id: "folds", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 44, y2: 0, spreadMethod: "repeat" }, defs);
+  [["0", 0], ["0.5", 0.4], ["1", 0]].forEach(function (s) {
+    var st = el("stop", { offset: s[0], "stop-opacity": s[1] }, lg);
+    st.style.stopColor = "var(--line)";
+  });
+  var cg = el("g", { mask: "url(#curtainMask)" }, curtainLayer);
+  var base = el("rect", { x: X, y: Y, width: CW, height: CH, opacity: 0.45 }, cg);
+  base.style.fill = "var(--bg)";
+  el("rect", { x: X, y: Y, width: CW, height: CH, fill: "url(#folds)", opacity: 0.8 }, cg);
+})();
+
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+function select(i) {
+  current = i;
+  var c = CATS[i], lv = LEVEL[c.lv], step = visited.indexOf(i);
+  nodes.forEach(function (n, j) { n.g.classList.toggle("sel", j === i); });
+  var icon = el("svg", { viewBox: "0 0 24 24" });
+  drawIcon(icon, c.ic);
+  panel.innerHTML =
+    '<div class="head"><span class="bdg"></span><div><div class="num">' + String(i + 1).padStart(2, "0") + " / 12</div>" +
+    "<h2>" + esc(c.name) + "</h2></div></div>" +
+    '<div><span class="pill">' + lv.g + " " + lv.t + '</span> <span class="status">' +
+    (step > -1 ? "Step " + (step + 1) + " on your path" : "Not on your path yet") + "</span></div>" +
+    "<div><h3>What it is</h3><p>" + esc(c.what) + "</p></div>" +
+    "<div><h3>Who exposes you</h3><p>" + esc(c.who) + "</p></div>" +
+    "<div><h3>Why it matters</h3><p>" + esc(c.why) + "</p></div>" +
+    "<div><h3>What to do</h3><p>" + esc(c.todo) + '</p><p class="path">Removal path: ' + esc(c.path) + "</p></div>";
+  panel.querySelector(".bdg").appendChild(icon);
+}
+
+function updateSummary() {
+  summary.textContent = visited.length
+    ? visited.length + " of 12 exposure vectors on your path"
+    : "Nothing lit yet. The curtain is down.";
+}
+
+function light(i) {
+  if (visited.indexOf(i) === -1) { visited.push(i); tweenR(holes[i], 86, 800); }
+  visited.forEach(function (v, k) {
+    nodes[v].g.classList.add("lit");
+    nodes[v].badge.textContent = k + 1;
+  });
+  updateSummary();
+}
+
+function place(parent, cls, x, y, deg, s, scale) {
+  var u = el("use", { href: "#fp", "class": cls,
+    transform: "translate(" + x + "," + y + ") rotate(" + deg + ") translate(" + (s * 4.5) + ",0) scale(" + (s * scale) + "," + scale + ")" }, parent);
+  return u;
+}
+function setFoot(x, y, deg) {
+  while (meLayer.firstChild) meLayer.removeChild(meLayer.firstChild);
+  if (holeFoot) { holeFoot.setAttribute("cx", x - OFF.x); holeFoot.setAttribute("cy", y - OFF.y); holeFoot.setAttribute("r", 46); }
+  place(meLayer, "me", x, y, deg, -1, 1.35);
+  place(meLayer, "me", x, y, deg, 1, 1.35);
+}
+function dropPrint(x, y, deg) {
+  side = -side;
+  place(trailLayer, "print trail", x, y, deg, side, 1);
+}
+
+async function walkTo(t) {
+  var my = gen, to = { x: pos[t].fx, y: pos[t].fy };
+  nodes[t].g.classList.add("target");
+  if (!foot) {
+    foot = { x: to.x, y: to.y };
+    setFoot(foot.x, foot.y, heading);
+  } else if (foot.x !== to.x || foot.y !== to.y) {
+    var dx = to.x - foot.x, dy = to.y - foot.y, dist = Math.hypot(dx, dy);
+    heading = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+    var sx = foot.x, sy = foot.y, next = STEP;
+    if (reduce) {
+      for (var d = next; d < dist - 8; d += STEP) dropPrint(sx + dx * d / dist, sy + dy * d / dist, heading);
+    } else {
+      var t0 = performance.now();
+      while (true) {
+        await new Promise(requestAnimationFrame);
+        if (my !== gen) return;
+        var d2 = Math.min(dist, (performance.now() - t0) / 1000 * SPEED);
+        while (next <= d2 && next < dist - 8) {
+          dropPrint(sx + dx * next / dist, sy + dy * next / dist, heading);
+          next += STEP;
+        }
+        foot.x = sx + dx * d2 / dist; foot.y = sy + dy * d2 / dist;
+        setFoot(foot.x, foot.y, heading);
+        if (d2 >= dist) break;
+      }
+    }
+    foot.x = to.x; foot.y = to.y;
+    setFoot(foot.x, foot.y, heading);
+  }
+  nodes[t].g.classList.remove("target");
+  light(t);
+  select(t);
+  if (!reduce) await sleep(450);
+}
+
+async function run() {
+  busy = true;
+  var my = gen;
+  while (queue.length && my === gen) await walkTo(queue.shift());
+  if (my === gen) busy = false;
+}
+function walk(i) {
+  select(i);
+  if (visited.indexOf(i) > -1 && !queue.length && !busy && foot && foot.x === pos[i].fx && foot.y === pos[i].fy) return;
+  queue.push(i);
+  if (!busy) run();
+}
+
+function clearAll() {
+  gen++; busy = false; queue = []; visited = []; foot = null; side = 1;
+  nodes.forEach(function (n) { n.g.classList.remove("lit", "target"); n.badge.textContent = ""; });
+  holes.forEach(function (h) { tweenR(h, 0, 0); });
+  if (holeFoot) tweenR(holeFoot, 0, 0);
+  [trailLayer, meLayer].forEach(function (l) { while (l.firstChild) l.removeChild(l.firstChild); });
+  updateSummary();
+  select(current);
+}
+function replay() {
+  clearAll();
+  // Alice starts just outside the map, at the bottom right
+  foot = { x: FW + 30, y: FH + 36 };
+  heading = -45;
+  setFoot(foot.x, foot.y, heading);
+  SAMPLE.forEach(function (i) { queue.push(i); });
+  run();
+}
+
+document.getElementById("replay").addEventListener("click", replay);
+document.getElementById("clear").addEventListener("click", clearAll);
+
+select(11);
+updateSummary();
+setTimeout(replay, 600);
+</script>
+</body>
+</html>
